@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net"
 )
@@ -10,6 +11,16 @@ type Server struct {
 	ln   net.Listener
 	IP   string
 	Port int
+}
+
+func CallBackToClient(conn net.Conn, data []byte, cnt int) error {
+
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("write buf err", err)
+		return errors.New("CallBackToClient err")
+	}
+
+	return nil
 }
 
 func CreateServer(name string) (r IServer) {
@@ -28,37 +39,22 @@ func (s *Server) Start() {
 		return
 	}
 	s.ln = ln
-	for {
-		conn, err := s.ln.Accept()
-		if err != nil {
-			fmt.Println("接受客户端连接失败", err)
-			continue
-		}
+	go func() {
+		cid := uint32(0)
+		for {
+			conn, err := s.ln.Accept()
+			if err != nil {
+				fmt.Println("接受客户端连接失败", err)
+				continue
+			}
 
-		go handleConn(conn)
-	}
+			dealConn := CreateConnection(conn, cid, CallBackToClient)
+			cid++
+			go dealConn.Start()
+		}
+	}()
 }
 
 func (s *Server) Stop() {
-
-}
-
-func handleConn(conn net.Conn) {
-	for {
-		b := make([]byte, 512)
-		// 读取客户端数据
-		cnt, err := conn.Read(b)
-		if err != nil {
-			fmt.Println("读取数据失败", err)
-			return
-		}
-		fmt.Println("client", string(b[:cnt]))
-
-		// 回写客户端消息
-		_, err = conn.Write([]byte("我是小昆虫服务器，收到消息了。"))
-		if err != nil {
-			fmt.Println("回写数据失败", err)
-			return
-		}
-	}
+	s.ln.Close()
 }

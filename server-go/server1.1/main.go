@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	myserver := server.CreateServer()
+	myserver := server.CreateServer("小昆虫")
 	myserver.Start()
 
 	c := make(chan os.Signal, 1)
